@@ -1,30 +1,48 @@
 import jwt
 from fastapi import HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
+from fastapi.security import OAuth2PasswordBearer
 
-# Секретный ключ и алгоритм для токена
+
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 1
 
-# Функция для создания токена
-def create_access_token(data: dict):
-    expire = datetime.utcnow() + timedelta(hours=1)  # Время истечения токена
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def create_access_token(data: dict) -> str:
     to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
     return encoded_jwt
 
-# Функция для верификации токена
-def verify_token(token: str):
+def verify_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
         return payload
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
-# Зависимость для извлечения токена из заголовка
-def get_jwt_token(authorization: str = Depends(OAuth2PasswordBearer(tokenUrl="token"))):
-    if authorization is None:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return authorization
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired"
+        )
+
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+def get_jwt_token(token: str = Depends(oauth2_scheme)) -> str:
+    verify_token(token)
+    return token
