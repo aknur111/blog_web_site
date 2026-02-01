@@ -23,3 +23,7 @@ node_modules/
 # Другие файлы, которые не следует отслеживать
 *.sqlite3
 *.db
+
+.venv
+.env
+__pycache__/
