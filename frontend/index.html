@@ -1,15 +1,295 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Blog</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cosmic Blog</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* маленькие доп. стили, чтобы страницы выглядели аккуратнее */
+    .topbar-actions { display:flex; gap:10px; align-items:center; }
+    .badge {
+      font-size: 12px; padding: 6px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      color: rgba(230,240,255,0.9);
+    }
+    .tabs {
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin: 10px 0 0;
+    }
+    .tabs .btn[aria-current="page"]{
+      outline: 2px solid rgba(138,91,255,0.7);
+      box-shadow: 0 0 0 4px rgba(138,91,255,0.15);
+    }
+    .page-title { margin: 18px 0 8px; }
+    .muted { color: rgba(230,240,255,0.7); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .input, .textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(6,8,20,0.55);
+      color: #eaf0ff;
+      font-family: inherit;
+    }
+    .textarea { min-height: 110px; resize: vertical; }
+    .panel {
+      border: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(11,14,34,0.55), rgba(8,6,28,0.40));
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+    .list { margin: 0; padding-left: 18px; }
+    .kpi { display:flex; gap:12px; flex-wrap:wrap; margin-top: 10px; }
+    .kpi .card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      min-width: 160px;
+    }
+    .kpi .label { font-size: 12px; opacity: .8; }
+    .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .split {
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-    <h1>Personal Blog Platform</h1>
-    <div id="posts"></div>
-    <button onclick="loadPosts()">Load Posts</button>
-    <script src="app.js"></script>
+<header class="site-header">
+  <div class="container header-inner">
+    <div class="brand" style="gap:14px">
+      <div class="logo">☄️</div>
+      <div>
+        <h1 class="site-title">Cosmic Blog</h1>
+        <p class="site-sub">Dark cosmic feed with striking visuals</p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <span id="apiStatus" class="badge">API: …</span>
+      <button id="openCreate" class="btn btn-glow">Create Post</button>
+      <button id="openLogin" class="btn btn-ghost">Sign in</button>
+      <button id="logoutBtn" class="btn btn-ghost" style="display:none">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tabs" id="tabs">
+      <button class="btn btn-ghost" data-page="home" aria-current="page">Home</button>
+      <button class="btn btn-ghost" data-page="my">My Posts</button>
+      <button class="btn btn-ghost" data-page="search">Search</button>
+      <button class="btn btn-ghost" data-page="post">Post</button>
+      <button class="btn btn-ghost" data-page="analytics">Analytics</button>
+      <button class="btn btn-ghost" data-page="profile">Profile</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="container">
+      <h2>Explore thoughts in the universe</h2>
+      <p class="lead">Topics, ideas and notes that shine through the cosmos</p>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section class="container" id="pageHome">
+    <h3 class="page-title">Home feed</h3>
+    <p class="muted">Latest posts from everyone.</p>
+    <div class="row" style="margin:10px 0 14px">
+      <input id="homeTag" class="input" style="max-width:220px" placeholder="Filter by tag (optional)">
+      <button id="homeReload" class="btn btn-ghost">Reload</button>
+      <button id="homeLoadMore" class="btn btn-ghost">Load more</button>
+    </div>
+    <div id="homePosts" class="posts-grid" aria-live="polite"></div>
+  </section>
+
+  <!-- MY POSTS -->
+  <section class="container" id="pageMy" style="display:none">
+    <h3 class="page-title">My Posts</h3>
+    <p class="muted">Posts created by your current token user.</p>
+    <div class="row" style="margin:10px 0 14px">
+      <button id="myReload" class="btn btn-ghost">Reload</button>
+      <button id="myLoadMore" class="btn btn-ghost">Load more</button>
+    </div>
+    <div id="myPosts" class="posts-grid"></div>
+  </section>
+
+  <!-- SEARCH -->
+  <section class="container" id="pageSearch" style="display:none">
+    <h3 class="page-title">Search</h3>
+    <p class="muted">Search posts using MongoDB text index (q parameter).</p>
+    <div class="panel">
+      <div class="row">
+        <input id="searchQuery" class="input" style="flex:1; min-width:240px" placeholder="Type keywords… (e.g. cosmos, nebula)">
+        <input id="searchTag" class="input" style="max-width:220px" placeholder="Tag (optional)">
+        <button id="searchBtn" class="btn btn-glow">Search</button>
+      </div>
+    </div>
+    <div class="row" style="margin:10px 0 14px">
+      <button id="searchLoadMore" class="btn btn-ghost">Load more</button>
+    </div>
+    <div id="searchPosts" class="posts-grid"></div>
+  </section>
+
+  <!-- POST DETAILS -->
+  <section class="container" id="pagePost" style="display:none">
+    <h3 class="page-title">Post</h3>
+    <p class="muted">Open a post to view details + comments. Views are incremented via $inc.</p>
+
+    <div class="panel">
+      <div class="row">
+        <input id="openPostId" class="input" style="flex:1; min-width:240px" placeholder="Paste post id…">
+        <button id="openPostBtn" class="btn btn-ghost">Open</button>
+      </div>
+    </div>
+
+    <div id="postView" class="panel" style="display:none">
+      <div class="split">
+        <div>
+          <h3 id="postTitle" style="margin:0 0 8px"></h3>
+          <div id="postMeta" class="muted" style="margin-bottom:10px"></div>
+          <div id="postImage"></div>
+          <pre id="postContent" style="white-space:pre-wrap; font-family:inherit; margin-top:12px"></pre>
+
+          <div class="row" style="margin-top:12px">
+            <button id="postEditBtn" class="btn btn-ghost">Edit</button>
+            <button id="postDeleteBtn" class="btn btn-ghost">Delete</button>
+            <button id="postRefreshBtn" class="btn btn-ghost">Refresh</button>
+          </div>
+        </div>
+
+        <div>
+          <h4 style="margin:0 0 8px">Comments</h4>
+          <div class="panel" style="margin-top:0">
+            <form id="commentForm">
+              <textarea id="commentText" class="textarea" placeholder="Write a comment…" required></textarea>
+              <div class="row" style="justify-content:flex-end; margin-top:10px">
+                <button class="btn btn-glow" type="submit">Add comment</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel">
+            <div class="row" style="justify-content:space-between">
+              <span class="muted">Latest comments</span>
+              <button id="commentsReload" class="btn btn-ghost">Reload</button>
+            </div>
+            <ul id="commentsList" class="list" style="margin-top:10px"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANALYTICS -->
+  <section class="container" id="pageAnalytics" style="display:none">
+    <h3 class="page-title">Analytics</h3>
+    <p class="muted">Aggregation endpoint: top tags.</p>
+
+    <div class="panel">
+      <div class="row">
+        <input id="analyticsLimit" class="input" style="max-width:180px" value="10">
+        <button id="analyticsReload" class="btn btn-glow">Load top tags</button>
+      </div>
+      <div id="analyticsKPIs" class="kpi"></div>
+      <ul id="topTags" class="list" style="margin-top:12px"></ul>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="container" id="pageProfile" style="display:none">
+    <h3 class="page-title">Profile</h3>
+    <p class="muted">Local profile stored in browser (username/email/token).</p>
+
+    <div class="panel">
+      <div class="row">
+        <button id="copyToken" class="btn btn-ghost">Copy token</button>
+        <button id="clearProfile" class="btn btn-ghost">Clear profile</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="muted">Username</div>
+        <div id="profileUsername" style="font-weight:700; margin-bottom:10px">—</div>
+
+        <div class="muted">Email</div>
+        <div id="profileEmail" style="font-weight:700; margin-bottom:10px">—</div>
+
+        <div class="muted">Token</div>
+        <div id="profileToken" style="word-break:break-all; font-weight:700">—</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- CREATE / EDIT POST MODAL -->
+<div id="modal" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <h3 id="postModalTitle">New Post</h3>
+    <form id="createForm">
+      <input type="hidden" name="id" />
+      <label>Title
+        <input class="input" type="text" name="title" required maxlength="120" placeholder="Post title">
+      </label>
+      <label>Content
+        <textarea class="textarea" name="content" required placeholder="What would you like to share?"></textarea>
+      </label>
+      <label>Image (URL)
+        <input class="input" type="url" name="image" placeholder="https://...">
+      </label>
+      <label>Category (optional)
+        <input class="input" type="text" name="category" placeholder="general">
+      </label>
+      <label>Tags (optional)
+        <input class="input" type="text" name="tags" placeholder="Comma-separated tags">
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="closeModal" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-glow">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- LOGIN / REGISTER MODAL -->
+<div id="loginModal" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" id="loginBackdrop"></div>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <h3>Sign in / Register</h3>
+    <p class="muted" style="margin-top:6px">This calls <code>/api/register</code> and saves token to localStorage.</p>
+    <form id="loginForm">
+      <label>Username
+        <input class="input" type="text" name="username" required placeholder="Your name">
+      </label>
+      <label>Email
+        <input class="input" type="email" name="email" required placeholder="you@example.com">
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="closeLogin" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-glow">Get token</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="notif" class="notification" aria-hidden="true"></div>
+
+<script>
+  // If frontend is served from Live Server (5500), call backend on 8000
+  if (!window.__API_BASE__ && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.__API_BASE__ = 'http://127.0.0.1:8000/api';
+  }
+</script>
+<script src="./app.js?v=999" defer></script>
 </body>
 </html>

@@ -1,3 +1,4 @@
-flask
-pymongo
+fastapi
+uvicorn[standard]
+motor
 python-dotenv

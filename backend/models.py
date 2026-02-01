@@ -3,12 +3,14 @@ from typing import List, Optional
 from datetime import datetime
 
 class Post(BaseModel):
+    id: Optional[str] = None
     author_id: str
     content: str
-    media_url: str
+    media_url: Optional[str] = ""
     category_id: str
     status: str
-    tags: List[str] = []
+    tags: List[str] = Field(default_factory=list)
+    views: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 
