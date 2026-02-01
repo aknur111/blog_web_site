@@ -5,10 +5,10 @@ from datetime import datetime
 class PostIn(BaseModel):
     author_id: str
     content: str
-    media_url: Optional[str] = ""
+    media_url: Optional[str] = None
     category_id: str = "general"
     status: str = "published"
-    tags: List[str] = []
+    tags: List[str] = Field(default_factory=list)
 
 class PostOut(PostIn):
     id: str
@@ -35,5 +35,4 @@ class UserOut(UserIn):
     token: str
 
 class CommentIn(BaseModel):
-    user_id: str
     content: str

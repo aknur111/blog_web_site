@@ -1,5 +1,4 @@
 body {
-    /* Космический градиент */
     font-family: 'Poppins', Arial, sans-serif;
     margin: 0;
     padding: 0;
@@ -11,9 +10,7 @@ body {
     overflow-x: hidden;
 }
 
-/* Звёздное поле (псевдоэлементы) */
 body::before, body::after {
-    /* ...удалено: повторяющиеся маленькие точки... */
     content: "";
     position: fixed;
     inset: 0;
@@ -21,7 +18,6 @@ body::before, body::after {
     z-index: 0;
 }
 
-/* крупные мягкие туманности */
 body::before {
     background:
         radial-gradient(closest-side at 12% 18%, rgba(111,43,220,0.32), transparent 28%),
@@ -34,7 +30,6 @@ body::before {
     opacity: 0.95;
 }
 
-/* аккуратные мерцающие звезды (не повторяются по всей странице как шум) */
 body::after {
     background-image:
         radial-gradient(2.2px 2.2px at 12% 14%, rgba(255,255,255,0.98) 30%, transparent 31%),
@@ -47,7 +42,6 @@ body::after {
     animation: starsTwinkle 6s linear infinite;
 }
 
-/* анимации фоновых слоёв */
 @keyframes nebulaDrift {
     0% { transform: translate(-4%, -2%) scale(1) rotate(0deg); }
     50% { transform: translate(4%, 2%) scale(1.02) rotate(3deg); }
@@ -59,7 +53,6 @@ body::after {
     100% { opacity: 0.95; transform: translateY(0); }
 }
 
-/* Контейнер */
 .container {
     width: min(1100px, 92%);
     margin: 0 auto;
@@ -67,7 +60,6 @@ body::after {
     z-index: 1;
 }
 
-/* Header */
 .site-header {
     padding: 18px 0;
     border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -117,7 +109,6 @@ body::after {
     color: rgba(230,240,255,0.7);
 }
 
-/* Hero */
 .hero {
     padding: 48px 0;
     text-align: center;
@@ -150,7 +141,6 @@ body::after {
     margin-top: 8px;
 }
 
-/* Posts grid */
 .posts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -158,19 +148,17 @@ body::after {
     margin: 28px 0 120px;
 }
 
-/* Card */
 .post-card {
     position: relative;
-    overflow: visible; /* чтобы градиентное свечение могло выходить */
+    overflow: visible;
     border-radius: 14px;
     padding: 18px;
     background: linear-gradient(180deg, rgba(11,14,34,0.7), rgba(8,6,28,0.55));
-    border: 1px solid rgba(150,120,255,0.06); /* тонкая граница */
+    border: 1px solid rgba(150,120,255,0.06);
     box-shadow: 0 10px 36px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
     transition: transform .18s ease, box-shadow .28s ease;
     isolation: isolate;
 }
-/* внешний неоновый блюр (эффект «глобального свечения») */
 .post-card::before {
     content: "";
     position: absolute;
@@ -194,7 +182,6 @@ body::after {
 }
 .post-card > * { position: relative; z-index: 1; }
 
-/* Ховер усиливает свечения и поднимает карточку */
 .post-card:hover {
     transform: translateY(-10px) scale(1.01);
     box-shadow: 0 22px 80px rgba(111,43,220,0.16);
@@ -204,7 +191,6 @@ body::after {
     opacity: 1;
 }
 
-/* Улучшаем миниатюру: добавляем внутреннюю подсветку и мягкий градиент */
 .post-card .thumb {
     position: relative;
     width: 100%;
@@ -241,7 +227,6 @@ body::after {
     transform: rotate(-10deg) translateY(-6px);
 }
 
-/* Buttons */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -268,7 +253,6 @@ body::after {
 }
 .btn-ghost:hover { transform: translateY(-2px); }
 
-/* Modal */
 .modal {
     position: fixed;
     inset: 0;
@@ -310,7 +294,6 @@ body::after {
 }
 .modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:6px; }
 
-/* Notification */
 .notification {
     position: fixed;
     right: 24px;
@@ -327,7 +310,6 @@ body::after {
 }
 .notification.show { opacity: 1; transform: translateY(0); }
 
-/* Responsive tweaks */
 @media (max-width: 640px) {
     .hero h2 { font-size: 28px; }
     .post-card .thumb { height: 120px; }

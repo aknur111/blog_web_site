@@ -3,7 +3,7 @@ from typing import List, Optional
 from bson.objectid import ObjectId
 from datetime import datetime
 
-from ..db import posts_col, comments_col
+from ..db import posts_col, comments_col, reactions_col
 from ..schemas import PostIn, PostOut, PostUpdate, CommentIn
 from ..auth import require_user
 
@@ -32,12 +32,9 @@ def oid(id_str: str) -> ObjectId:
     return ObjectId(id_str)
 
 
-# -------------------- POSTS --------------------
-
 @router.post("", response_model=PostOut)
 async def create_post(payload: PostIn, user=Depends(require_user)):
     doc = payload.dict()
-    # лучше фиксировать автора от токена (а не от фронта)
     doc["author_id"] = user.get("username") or user.get("id")
 
     doc["created_at"] = datetime.utcnow()
@@ -61,7 +58,6 @@ async def list_posts(
     if author:
         query["author_id"] = author
     if q:
-        # работает если есть text index по content
         query["$text"] = {"$search": q}
 
     cursor = posts_col.find(query).sort("created_at", -1).skip(skip).limit(limit)
@@ -70,8 +66,6 @@ async def list_posts(
         docs.append(to_out(d))
     return docs
 
-
-# ✅ ВАЖНО: /me ОБЯЗАТЕЛЬНО ДО /{post_id}
 @router.get("/me", response_model=List[PostOut])
 async def my_posts(
     user=Depends(require_user),
@@ -99,7 +93,6 @@ async def update_post(post_id: str, payload: PostUpdate, user=Depends(require_us
     _id = oid(post_id)
     p = payload.dict(exclude_none=True)
 
-    # advanced ops
     if "push_tag" in p:
         await posts_col.update_one({"_id": _id}, {"$addToSet": {"tags": p["push_tag"]}})
     if "pull_tag" in p:
@@ -107,7 +100,6 @@ async def update_post(post_id: str, payload: PostUpdate, user=Depends(require_us
     if "inc_views" in p:
         await posts_col.update_one({"_id": _id}, {"$inc": {"views": p["inc_views"]}})
 
-    # normal fields
     update = {}
     for field in ("content", "media_url", "category_id", "status", "tags"):
         if field in p:
@@ -131,8 +123,6 @@ async def delete_post(post_id: str, user=Depends(require_user)):
     return {"deleted": post_id}
 
 
-# -------------------- COMMENTS --------------------
-
 @router.post("/{post_id}/comments")
 async def add_comment(post_id: str, payload: CommentIn, user=Depends(require_user)):
     _id = oid(post_id)
@@ -141,27 +131,78 @@ async def add_comment(post_id: str, payload: CommentIn, user=Depends(require_use
         raise HTTPException(status_code=404, detail="Post not found")
 
     doc = payload.dict()
-    # user_id лучше брать из токена:
     doc["user_id"] = user.get("username") or user.get("id")
     doc["post_id"] = post_id
     doc["created_at"] = datetime.utcnow()
 
     res = await comments_col.insert_one(doc)
-    return {"id": str(res.inserted_id), **doc}
 
+    return {
+        "id": str(res.inserted_id),
+        "user_id": doc["user_id"],
+        "content": doc["content"],
+        "post_id": post_id,
+        "created_at": doc["created_at"].isoformat(),
+    }
 
 @router.get("/{post_id}/comments")
 async def list_comments(post_id: str, limit: int = Query(50, ge=1, le=200)):
-    oid(post_id)  # просто валидируем
-    cursor = comments_col.find({"post_id": post_id}).sort("created_at", -1).limit(limit)
+    oid(post_id)
+
+    cursor = comments_col.find(
+        {"post_id": post_id},
+        {"content": 1, "user_id": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(limit)
+
     items = []
     async for c in cursor:
-        c["_id"] = str(c["_id"])
-        items.append(c)
+        items.append({
+            "id": str(c["_id"]),
+            "user_id": c.get("user_id", "user"),
+            "content": c.get("content", ""),
+            "created_at": c.get("created_at"),
+        })
     return items
 
+@router.post("/{post_id}/reactions")
+async def react_to_post(
+    post_id: str,
+    reaction_type: str = Query(..., pattern="^(like|dislike|love)$"),
+    user=Depends(require_user)
+):
+    oid(post_id)
+    user_id = user.get("_id") or user.get("id") or user.get("username")
 
-# -------------------- ANALYTICS (AGGREGATION) --------------------
+    await reactions_col.update_one(
+        {"post_id": post_id, "user_id": user_id},
+        {"$set": {"reaction_type": reaction_type, "created_at": datetime.utcnow()}},
+        upsert=True
+    )
+    return {"ok": True, "reaction": reaction_type}
+
+
+@router.get("/{post_id}/reactions")
+async def get_reactions(post_id: str):
+    oid(post_id)
+
+    pipeline = [
+        {"$match": {"post_id": post_id}},
+        {"$group": {"_id": "$reaction_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$project": {"_id": 0, "reaction": "$_id", "count": 1}},
+    ]
+    return await reactions_col.aggregate(pipeline).to_list(length=10)
+
+
+@router.delete("/{post_id}/reactions")
+async def remove_reaction(post_id: str, user=Depends(require_user)):
+    oid(post_id)
+
+    user_id = user.get("_id") or user.get("id") or user.get("username")
+
+    await reactions_col.delete_one({"post_id": post_id, "user_id": user_id})
+    return {"ok": True}
+
 
 @router.get("/analytics/top-tags")
 async def top_tags(limit: int = Query(10, ge=1, le=50)):
