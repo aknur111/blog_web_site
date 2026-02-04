@@ -32,5 +32,3 @@ Troubleshooting:
 - If fetch fails, check browser DevTools → Network for request URL and response.
 - If you see CORS errors, confirm backend running and CORS middleware enabled (it is by default).
 - Check backend logs for stack traces and Mongo connectivity issues.
-
-See code for API details and endpoints. Если нужно — подготовлю файл .env.example и скрипты запуска.
