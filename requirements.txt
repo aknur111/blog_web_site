@@ -1,4 +1,5 @@
 fastapi
 uvicorn[standard]
 motor
+pymongo
 python-dotenv
